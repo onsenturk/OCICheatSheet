@@ -1,5 +1,6 @@
 Video on: 
-https://www.youtube.com/channel/UCL3z2G2u5oXUFbCSR63W2Uw
+https://youtu.be/FyH3oCiq2Tg
+
 
 Login to the VM that you will install CMAN on
 
