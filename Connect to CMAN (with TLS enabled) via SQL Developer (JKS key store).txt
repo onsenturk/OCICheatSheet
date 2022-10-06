@@ -1,0 +1,56 @@
+Video on: 
+https://www.youtube.com/channel/UCL3z2G2u5oXUFbCSR63W2Uw
+
+- Create a wallet in the CMAN VM instance
+mkdir CMAN_WALLET
+wallet location=/home/oracle/CMAN_WALLET
+ 
+orapki wallet create -wallet /home/oracle/CMAN_WALLET -auto_login -pwd <new Oracle Wallet Password>
+orapki wallet add -wallet /home/oracle/CMAN_WALLET -dn "CN=CMAN" -keysize 2048 -self_signed -validity 730 -pwd <new Oracle Wallet Password>
+orapki wallet export -wallet /home/oracle/CMAN_WALLET -dn "CN=CMAN" -cert server_ca.cert
+ 
+- Export the wallet as a JKS
+orapki wallet pkcs12_to_jks -wallet /home/oracle/CMAN_WALLET/ -pwd <Oracle Wallet Password> -jksKeyStoreLoc /home/oracle/CMAN_WALLET/keystore.jks -jksKeyStorepwd <new keystorepassword> -jksTrustStoreLoc /home/oracle/CMAN_WALLET/truststore.jks -jksTrustStorepwd <new trust store password>
+ 
+- zip all these into a wallet file because it needs to be used within the clients
+zip -r custom_wallet.zip CMAN_WALLET/
+ 
+- Configure CMAN to accept TLS connections:
+cman.ora file
+CMAN_SSL =
+   (configuration=
+     (address=(protocol=tcps)(host=10.0.0.211)(port=2000))
+     (next_hop=(address=(protocol=tcp)(port=1521)(host=10.0.0.102)))
+     (rule_list=
+       (rule=(src=*)(dst=*)(srv=*)(act=accept))
+     )
+    )
+ 
+wallet_location=(source=(method=file)(method_data=(directory=/home/oracle/CMAN_WALLET/)))
+ 
+SSL_CLIENT_AUTHENTICATION = TRUE
+ 
+- Start CMAN
+cmctl 
+admin cman_ssl
+startup
+ 
+- Get the zip file (created on step 3) to the client
+ 
+- Unzip the zip into a folder (example: /Users/onursenturk/certificate/CMAN_WALLET)
+ 
+- Create ojdbc.properties file in the folder
+# Connection property while using Oracle wallets.
+oracle.net.wallet_location=(SOURCE=(METHOD=FILE)(METHOD_DATA=(DIRECTORY=${TNS_ADMIN})))
+# FOLLOW THESE STEPS FOR USING JKS
+# (1) Uncomment the following properties to use JKS.
+# (2) Comment out the oracle.net.wallet_location property above
+# (3) Set the correct password for both trustStorePassword and keyStorePassword.
+# It's the password you specified when downloading the wallet from OCI Console or the Service Console.
+javax.net.ssl.trustStore=${TNS_ADMIN}/truststore.jks (were defined in step 2)
+javax.net.ssl.trustStorePassword=<trustStorePassword> (were defined in step 2)
+javax.net.ssl.keyStore=${TNS_ADMIN}/keystore.jks (were defined in step 2)
+javax.net.ssl.keyStorePassword=<keyStorePassword> (were defined in step 2)
+ 
+- Go to sql developer and use the jdbc thin client url to connect specifying the TNS_ADMIN parameter
+jdbc:oracle:thin:@(DESCRIPTION=(ADDRESS=(PROTOCOL=TCPS)(PORT=2000)(HOST=132.145.30.167))(CONNECT_DATA=(SERVICE_NAME=pdb1.sub02030955160.commonvcn.oraclevcn.com)))?TNS_ADMIN=/Users/onursenturk/certificate/CMAN_WALLET
