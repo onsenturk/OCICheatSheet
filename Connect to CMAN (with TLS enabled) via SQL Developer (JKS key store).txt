@@ -1,6 +1,52 @@
 Video on: 
 https://www.youtube.com/channel/UCL3z2G2u5oXUFbCSR63W2Uw
 
+Login to the VM that you will install CMAN on
+
+- sudo yum update -y
+- sudo yum install oracle-database-preinstall-19c.x86_64 -y
+- sudo su - oracle
+
+- download LINUX.X64_213000_client.zip from https://www.oracle.com/database/technologies/oracle21c-linux-downloads.html
+unzip LINUX.X64_213000_client.zip
+
+- Create the following directories:
+mkdir -p /home/oracle/base/product/cman213
+mkdir /home/oracle/oraInventory
+
+- Create the response file:
+vi /home/oracle/cman213.rsp
+
+oracle.install.responseFileVersion=/oracle/install/rspfmt_clientinstall_response_schema_v21.3.0
+ORACLE_HOSTNAME=cman
+UNIX_GROUP_NAME=oinstall
+INVENTORY_LOCATION=/home/oracle/oraInventory
+SELECTED_LANGUAGES=en
+ORACLE_HOME=/home/oracle/base/product/cman213
+ORACLE_BASE=/home/oracle/base/
+oracle.install.client.installType=Custom
+oracle.install.client.customComponents="oracle.sqlplus:21.0.0.0.0","oracle.network.client:21.0.0.0.0","oracle.network.cman:21.0.0.0.0","oracle.network.listener:21.0.0.0.0"
+
+- Run installer
+/home/oracle/client/runInstaller -silent -responseFile /home/oracle/cman213.rsp ORACLE_HOME_NAME=cman213
+
+- Check the response file:
+tail -f /home/oracle/base/product/cman213/install/response/client_*.rsp
+
+- Run the following commands with root:
+exit to opc user
+sudo su
+/home/oracle/oraInventory/orainstRoot.sh
+/home/oracle/base/product/cman213/root.sh
+
+su - oracle
+
+export ORACLE_HOME=/home/oracle/base/product/cman213
+export LD_LIBRARY_PATH=/home/oracle/base/product/cman213/lib
+export PATH=/home/oracle/base/product/cman213/bin:$PATH:$HOME
+export TNS_ADMIN=/home/oracle/base/network/admin
+export ORACLE_SID=orcl
+
 - Create a wallet in the CMAN VM instance
 mkdir CMAN_WALLET
 wallet location=/home/oracle/CMAN_WALLET
@@ -13,29 +59,40 @@ orapki wallet export -wallet /home/oracle/CMAN_WALLET -dn "CN=CMAN" -cert server
 orapki wallet pkcs12_to_jks -wallet /home/oracle/CMAN_WALLET/ -pwd <Oracle Wallet Password> -jksKeyStoreLoc /home/oracle/CMAN_WALLET/keystore.jks -jksKeyStorepwd <new keystorepassword> -jksTrustStoreLoc /home/oracle/CMAN_WALLET/truststore.jks -jksTrustStorepwd <new trust store password>
  
 - zip all these into a wallet file because it needs to be used within the clients
-zip -r custom_wallet.zip CMAN_WALLET/
- 
-- Configure CMAN to accept TLS connections:
-cman.ora file
+zip -r tls_wallet.zip /home/oracle/CMAN_WALLET/
+
+- create the cman.ora file
+vim /home/oracle/base/network/admin/cman.ora
+
+
 CMAN_SSL =
    (configuration=
-     (address=(protocol=tcps)(host=10.0.0.211)(port=2000))
-     (next_hop=(address=(protocol=tcp)(port=1521)(host=10.0.0.102)))
+     (address=(protocol=tcps)(host=<ip of the host running cman>)(port=<port you want to use>))
+     (next_hop=(address=(protocol=tcp)(port=1521)(host=<ip or dns of the db host you want to connect to>)))
      (rule_list=
        (rule=(src=*)(dst=*)(srv=*)(act=accept))
      )
     )
  
 wallet_location=(source=(method=file)(method_data=(directory=/home/oracle/CMAN_WALLET/)))
- 
-SSL_CLIENT_AUTHENTICATION = TRUE
- 
-- Start CMAN
-cmctl 
-admin cman_ssl
-startup
- 
+
+-- Configuring the CMAN --
+Let's assume the CMAN will work with port 2000 (exposing the services through this port)
+This should be added to the firewall rules
+sudo firewall-cmd --permanent --add-port=2000/tcp
+sudo firewall-cmd --reload
+sudo iptables -I INPUT -p tcp --dport 2000 -m comment --comment "# CMAN 2000 #" -j ACCEPT
+
+export ORACLE_HOME=/home/oracle/base/product/cman213
+/home/oracle/base/product/cman213/bin/cmctl
+CMCTL> admin cman_ssl
+CMCTL:cman_ssl> startup
+CMCTL:cman_ssl> show status
+CMCTL:cman_ssl> show services
+
+
 - Get the zip file (created on step 3) to the client
+curl -X PUT --data-binary @tls_wallet.zip <Object Storage Pre authenticated request link>tls_wallet.zip
  
 - Unzip the zip into a folder (example: /Users/onursenturk/certificate/CMAN_WALLET)
  
@@ -53,4 +110,4 @@ javax.net.ssl.keyStore=${TNS_ADMIN}/keystore.jks (were defined in step 2)
 javax.net.ssl.keyStorePassword=<keyStorePassword> (were defined in step 2)
  
 - Go to sql developer and use the jdbc thin client url to connect specifying the TNS_ADMIN parameter
-jdbc:oracle:thin:@(DESCRIPTION=(ADDRESS=(PROTOCOL=TCPS)(PORT=2000)(HOST=132.145.30.167))(CONNECT_DATA=(SERVICE_NAME=pdb1.sub02030955160.commonvcn.oraclevcn.com)))?TNS_ADMIN=/Users/onursenturk/certificate/CMAN_WALLET
+jdbc:oracle:thin:@(DESCRIPTION=(ADDRESS=(PROTOCOL=TCPS)(PORT=2000)(HOST=<cman_host_public_ip>))(CONNECT_DATA=(SERVICE_NAME=pdb1.sub02030955160.commonvcn.oraclevcn.com)))?TNS_ADMIN=/Users/onursenturk/certificate/CMAN_WALLET
