@@ -6,13 +6,16 @@ https://github.com/onsenturk/OCICheatSheet/blob/main/CMAN.png
 
 Login to the VM that you will install CMAN on
 
-- sudo yum update -y
-- sudo yum install oracle-database-preinstall-19c.x86_64 -y
-- sudo su - oracle
+Step 1 - Update and install required files
+sudo yum update -y
+sudo yum install oracle-database-preinstall-19c.x86_64 -y
+sudo su - oracle
 
-- download LINUX.X64_213000_client.zip from https://www.oracle.com/database/technologies/oracle21c-linux-downloads.html
+Step 2 - download Oracle Client
+download LINUX.X64_213000_client.zip from https://www.oracle.com/database/technologies/oracle21c-linux-downloads.html
 unzip LINUX.X64_213000_client.zip
 
+Step 3 - Install Connection Manager
 - Create the following directories:
 mkdir -p /home/oracle/base/product/cman213
 mkdir /home/oracle/oraInventory
@@ -50,7 +53,7 @@ export PATH=/home/oracle/base/product/cman213/bin:$PATH:$HOME
 export TNS_ADMIN=/home/oracle/base/network/admin
 export ORACLE_SID=orcl
 
-- Create a wallet in the CMAN VM instance
+Step 4 -  Create a wallet in the CMAN VM instance
 mkdir CMAN_WALLET
 wallet location=/home/oracle/CMAN_WALLET
  
@@ -58,13 +61,13 @@ orapki wallet create -wallet /home/oracle/CMAN_WALLET -auto_login -pwd <new Orac
 orapki wallet add -wallet /home/oracle/CMAN_WALLET -dn "CN=CMAN" -keysize 2048 -self_signed -validity 730 -pwd <new Oracle Wallet Password>
 orapki wallet export -wallet /home/oracle/CMAN_WALLET -dn "CN=CMAN" -cert server_ca.cert
  
-- Export the wallet as a JKS
+Step 5 - Export the wallet as a JKS
 orapki wallet pkcs12_to_jks -wallet /home/oracle/CMAN_WALLET/ -pwd <Oracle Wallet Password> -jksKeyStoreLoc /home/oracle/CMAN_WALLET/keystore.jks -jksKeyStorepwd <new keystorepassword> -jksTrustStoreLoc /home/oracle/CMAN_WALLET/truststore.jks -jksTrustStorepwd <new trust store password>
  
 - zip all these into a wallet file because it needs to be used within the clients
 zip -r tls_wallet.zip /home/oracle/CMAN_WALLET/
 
-- create the cman.ora file
+Step 6 - create the cman.ora file
 vim /home/oracle/base/network/admin/cman.ora
 
 
@@ -79,7 +82,7 @@ CMAN_SSL =
  
 wallet_location=(source=(method=file)(method_data=(directory=/home/oracle/CMAN_WALLET/)))
 
--- Configuring the CMAN --
+Step 7 - Configure firewall rules on the VM running CMAN
 Let's assume the CMAN will work with port 2000 (exposing the services through this port)
 This should be added to the firewall rules
 sudo firewall-cmd --permanent --add-port=2000/tcp
@@ -94,12 +97,13 @@ CMCTL:cman_ssl> show status
 CMCTL:cman_ssl> show services
 
 
-- Get the zip file (created on step 3) to the client
+Step 8 - Get the zip file (created on step 4) to the client
 curl -X PUT --data-binary @tls_wallet.zip <Object Storage Pre authenticated request link>tls_wallet.zip
- 
-- Unzip the zip into a folder (example: /Users/onursenturk/certificate/CMAN_WALLET)
- 
-- Create ojdbc.properties file in the folder
+
+Step 9 - Unzip the zip into a folder 
+(example: /Users/onursenturk/certificate/CMAN_WALLET)
+
+Step 10 - Create ojdbc.properties file in the folder
 # Connection property while using Oracle wallets.
 oracle.net.wallet_location=(SOURCE=(METHOD=FILE)(METHOD_DATA=(DIRECTORY=${TNS_ADMIN})))
 # FOLLOW THESE STEPS FOR USING JKS
@@ -112,5 +116,5 @@ javax.net.ssl.trustStorePassword=<trustStorePassword> (were defined in step 2)
 javax.net.ssl.keyStore=${TNS_ADMIN}/keystore.jks (were defined in step 2)
 javax.net.ssl.keyStorePassword=<keyStorePassword> (were defined in step 2)
  
-- Go to sql developer and use the jdbc thin client url to connect specifying the TNS_ADMIN parameter
+Step 11 - Go to sql developer and use the jdbc thin client url to connect specifying the TNS_ADMIN parameter
 jdbc:oracle:thin:@(DESCRIPTION=(ADDRESS=(PROTOCOL=TCPS)(PORT=2000)(HOST=<cman_host_public_ip>))(CONNECT_DATA=(SERVICE_NAME=pdb1.sub02030955160.commonvcn.oraclevcn.com)))?TNS_ADMIN=/Users/onursenturk/certificate/CMAN_WALLET
