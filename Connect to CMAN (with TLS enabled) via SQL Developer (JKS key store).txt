@@ -2,7 +2,8 @@ Video on:
 https://youtu.be/FyH3oCiq2Tg
 
 Architecture
-<img href=https://github.com/onsenturk/OCICheatSheet/blob/main/CMAN.png/>
+<img src="https://github.com/onsenturk/OCICheatSheet/blob/main/CMAN.png">
+
 
 
 Login to the VM that you will install CMAN on
