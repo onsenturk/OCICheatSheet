@@ -3,6 +3,7 @@ https://youtu.be/FyH3oCiq2Tg
 
 Architecture
 https://github.com/onsenturk/OCICheatSheet/blob/main/CMAN.png
+![alt text](https://raw.githubusercontent.com/AnykeyNL/OCI-Python/master/example.png)
 
 Login to the VM that you will install CMAN on
 
