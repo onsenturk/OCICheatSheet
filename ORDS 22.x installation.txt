@@ -1,0 +1,54 @@
+sudo yum-config-manager --add-repo=https://yum.oracle.com/repo/OracleLinux/OL8/oracle/software/x86_64/
+
+sudo yum install ords -y
+
+wget https://download.oracle.com/java/17/archive/jdk-17.0.3.1_linux-x64_bin.rpm
+
+sudo rpm -i jdk-17.0.3.1_linux-x64_bin.rpm
+
+sudo su - oracle
+ords --config /home/oracle/ords install --prompt-password -i
+ords --config /home/oracle/ords serve
+
+serve ords in the background
+nohup ords --config /home/oracle/ords serve &
+
+tail -f nohup.txt
+
+firewall and iptables configuration:
+sudo firewall-cmd --zone=public --add-port <Port Serving ORDS>/tcp --permanent
+sudo firewall-cmd --list-all
+sudo firewall-cmd --reload
+sudo iptables -I INPUT -p tcp --dport <Port Serving ORDS> -m comment --comment "# ORDS <Port Serving ORDS> #" -j ACCEPT
+
+the default connection will go through here:
+http://<VM IP>:<Port Serving ORDS>/ords/sql-developer
+
+the other connections will go through the connection name you defined
+http://<VM IP>:<Port Serving ORDS>/ords/orclpdb1/sql-developer
+
+---
+
+Login with your user with sql developer
+for example SH user
+
+enable REST Services
+http://<VM IP>:<Port Serving ORDS>/ords/sql-developer
+
+type your alias
+login to the rest services
+
+BEGIN
+  ORDS.enable_object (
+    p_enabled      => TRUE, -- Default  { TRUE | FALSE }
+    p_schema       => 'SH',
+    p_object       => 'CUSTOMERS',
+    p_object_type  => 'TABLE', -- Default  { TABLE | VIEW }
+    p_object_alias => 'customers'
+  );
+    
+  COMMIT;
+END;
+/
+
+http://<VM IP>:<Port Serving ORDS>/ords/sh/customers
