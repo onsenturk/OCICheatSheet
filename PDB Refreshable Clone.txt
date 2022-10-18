@@ -1,0 +1,67 @@
+Source DB: 
+- login to cdb and create a user
+CREATE USER c##refresh IDENTIFIED BY WElcome_12# CONTAINER=ALL; 
+GRANT CREATE SESSION, CREATE PLUGGABLE DATABASE TO c##refresh CONTAINER=ALL;
+
+if this is for DR purposes, create the same user in the TARGET too
+CREATE USER c##refresh IDENTIFIED BY WElcome_12# CONTAINER=ALL; 
+GRANT CREATE SESSION, CREATE PLUGGABLE DATABASE TO c##refresh CONTAINER=ALL;
+
+Destination DB:
+- Make sure local_undo_enables is set to true
+Local UNDO is necessary to ensure the source remains in read-write during the cloning process.
+SELECT property_name, property_value FROM database_properties WHERE property_name = 'LOCAL_UNDO_ENABLED';
+
+
+SSH to the target database
+edit the tnsnames.ora to add the source cdb connection string
+- Add the source cdb to the tnsnames.ora in the target database
+
+SOURCEDB =
+  (DESCRIPTION=(CONNECT_TIMEOUT=5)(TRANSPORT_CONNECT_TIMEOUT=3)(RETRY_COUNT=3)(ADDRESS_LIST=(LOAD_BALANCE=on)(ADDRESS=(PROTOCOL=TCP)(HOST=hostip)(PORT=1521)))(CONNECT_DATA=(SERVICE_NAME=servicename)))
+  
+- Create dblink to the source dba on the target db
+create public database link refresh_pdb connect to c##refresh identified by WElcome_12# using 'SOURCEDB';
+
+- Check if the dblink is working on the target db
+alter session set global_names=false; 
+select * from dual@refresh_pdb;
+
+
+show pdbs;
+
+CREATE PLUGGABLE DATABASE pdbnameontarget FROM pdbnameonsource@dblinkname REFRESH MODE EVERY 15 MINUTES KEYSTORE IDENTIFIED BY TargetTDEWalletPassword;
+
+
+-- Create the pluggable database 
+CREATE PLUGGABLE DATABASE clonepdb FROM ratpdb@refresh_pdb REFRESH MODE EVERY 15 MINUTES KEYSTORE IDENTIFIED BY TDEWalletPassword;
+
+or use parallel
+CREATE PLUGGABLE DATABASE clonepdb FROM ratpdb@refresh_pdb REFRESH MODE EVERY 15 MINUTES KEYSTORE IDENTIFIED BY TDEWalletPassword parallel;
+
+To read from db
+alter pluggable database clonepdb open read only;
+
+To refresh manually
+ALTER PLUGGABLE DATABASE clonepdb CLOSE IMMEDIATE; 
+ALTER PLUGGABLE DATABASE clonepdb REFRESH;
+
+
+Refresh modes
+REFRESH MODE MANUAL;
+REFRESH MODE EVERY 60 MINUTES;
+REFRESH MODE NONE
+
+see the plug-in violations on target (if moving from a different version or a different platform)
+select * from pdb_plug_in_violations
+
+--Target DB details (last refresh time)
+ALTER PLUGGABLE DATABASE pdb_eeep open read only
+
+SELECT pdb_id, pdb_name, refresh_mode, refresh_interval, status, last_refresh_scn
+FROM   dba_pdbs
+ORDER BY status desc;
+
+
+Link to documentation:
+https://docs.oracle.com/en/database/oracle/oracle-database/19/multi/cloning-a-pdb.html#GUID-05702CEB-A43C-452C-8081-4CA68DDA8007
