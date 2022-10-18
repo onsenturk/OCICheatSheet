@@ -1,0 +1,16 @@
+Create a key and a secret in the key vault (for the dbsnmp user)
+
+Create policy for dpd to read the vault service (either in compartment or in root)
+Allow service dpd to read secret-family in compartment ABC  where target.vault.id = 'Vault OCID'
+
+sudo yum install sqlcl
+sql /nolog
+conn sys@other-db.subnet.vcn.oraclevcn.com:1521/orcl_fra19b.subnet.vcn.oraclevcn.com as sysdba
+
+GRANT CREATE PROCEDURE TO dbsnmp;
+GRANT SELECT ANY DICTIONARY, SELECT_CATALOG_ROLE TO dbsnmp;
+GRANT ALTER SYSTEM TO dbsnmp;
+GRANT ADVISOR TO dbsnmp;
+GRANT EXECUTE ON DBMS_WORKLOAD_REPOSITORY TO dbsnmp;
+alter user dbsnmp account unlock;
+alter user dbsnmp identified by Super_Strong_1_23;
