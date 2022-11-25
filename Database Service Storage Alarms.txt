@@ -1,0 +1,29 @@
+Go to OCI Console
+Navigate to "Observability & Management"
+Click on "Alarm Definitions"
+
+"Create Alarm"
+
+Define the alarm name, alarm body etc
+
+Select the:
+
+"Metric Namespace" to be "oci_database_cluster"
+"Metric Name" to be "ASMDiskgroupUtilization"
+
+For DATA storage area; Dimension Name: "diskgroupName", Dimension value: "org.data.dg"
+For RECO storage area; Dimension Name: "diskgroupName", Dimension value: "org.reco.dg"
+
+Configure the trigger rule for the rule to be triggered, based on the data table below (make sure you click on show graph)
+
+Configure the destionation (on what event to be triggered when the alarm is triggered)
+Notification Service would be appropriate
+
+Enable "Repeat Notification" if you want to receive multiple alarms
+
+Enable "Enable this alarm" to (obviously) enable the alarm
+
+Click on "Save alarm" and you will receive an email asking you to confirm the subsription
+
+Then you will get the emails when the storage area gets utilized above the threshold.
+
