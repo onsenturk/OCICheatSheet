@@ -1,0 +1,74 @@
+1. Create the file storage on the network
+place it in the worker node subnet
+
+2.create the fss-pv.yaml file
+
+
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: fss-pv <fix_me any name>
+spec:
+  capacity:
+    storage: 50Gi
+  volumeMode: Filesystem
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  csi:
+    driver: fss.csi.oraclecloud.com
+    volumeHandle: ocid1.filesystem.oc1.uk_london_1.aaaaaaaaaaan25aaaamrxw4ljrfvqwiljr:172.168.1.175:/OKEFSS
+    volumeHandle: <filesystem_ocid>:<ip>:<export_path>
+
+3. run to create the persistent volume
+kubectl create -f fss-pv.yaml
+
+4. create the fss-pvc.yaml file
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: fss-pvc <fix_me based on any name you want>
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: ""
+  resources:
+    requests:
+      storage: 50Gi
+  volumeName: fss-pv <fix_me based on persistent volume>
+
+5. run
+kubectl create -f fss-pvc.yaml
+
+
+6. test it with the pod
+create a pod with the new storage
+
+pvc_test.yaml
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: fss-dynamic-app <fix_me pod name>
+spec:
+  containers:
+    - name: nginx
+      image: nginx:latest
+      ports:
+        - name: http
+          containerPort: 80
+      volumeMounts:
+        - name: persistent-storage
+          mountPath: /usr/share/nginx/html <fix_me mount path on the node>
+  volumes:
+  - name: persistent-storage
+    persistentVolumeClaim:
+      claimName: fss-pvc <fix_me persistent volume claim name>
+
+kubectl create -f pvc_test.yaml
+
+7. get pod description
+kubectl describe pods fss-dynamic-app <fix_me pod name from above>
+kubectl get pv
+kubectl get pvc
