@@ -2,7 +2,7 @@
 place it in the worker node subnet
 
 2.create the fss-pv.yaml file
-
+example: https://github.com/onsenturk/OCICheatSheet/blob/main/fss-pv.yaml
 
 apiVersion: v1
 kind: PersistentVolume
@@ -24,6 +24,7 @@ spec:
 kubectl create -f fss-pv.yaml
 
 4. create the fss-pvc.yaml file
+example: https://github.com/onsenturk/OCICheatSheet/blob/main/fss-pvc.yaml
 
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -44,6 +45,7 @@ kubectl create -f fss-pvc.yaml
 
 6. test it with the pod
 create a pod with the new storage
+example: https://github.com/onsenturk/OCICheatSheet/blob/main/fss-dynamic-app.yaml
 
 pvc_test.yaml
 
