@@ -1,0 +1,78 @@
+ssh -i private opc@<observer_vm_ip>
+sudo yum update -y
+sudo yum config-manager --enable ol8_codeready_builder
+sudo yum install xorg-x11-xauth xorg-x11-fonts-* xorg-x11-font-utils xorg-x11-fonts-Type1 xorg-x11-apps.x86_64 oracle-database-preinstall-21c -y
+
+sudo systemctl disable firewalld
+sudo vim /etc/ssh/sshd_config
+
+X11forwarding yes
+X11DisplayOffset 10
+X11UseLocalhost no
+
+sudo reboot
+
+ssh -i private opc@<observer_vm_ip> -X
+
+touch ~/.Xauthority
+xclock
+
+opc user
+$ xauth list $DISPLAY
+<output1>
+$ echo $DISPLAY
+<output2>
+
+sudo su - oracle
+touch ~/.Xauthority
+
+oracle user
+touch ~/.Xauthority
+xauth add <output1>
+export DISPLAY=<output2>
+
+wget LINUX.X64_193000_client.zip
+unzip LINUX.X64_193000_client.zip
+
+cd client
+./runInstaller
+/home/oracle/app/oraInventory/orainstRoot.sh
+
+cd 
+vim .bash_profile
+export ORACLE_HOME=/home/oracle/app/oracle/product/19.0.0/client_1
+export PATH=$PATH:/home/oracle/app/oracle/product/19.0.0/client_1/bin:/home/oracle/app/oracle/product/19.0.0/client_1/bin/
+export TNS_ADMIN=/home/oracle/app/oracle/product/19.0.0/client_1/network/admin/
+
+dgmgrl
+
+cd /home/oracle/app/oracle/product/19.0.0/client_1/network/admin/
+vim tnsnames.ora
+
+make sure the alias is the same as the primary and standby databases
+(example)
+primary_db_alias=(DESCRIPTION=(CONNECT_TIMEOUT=5)(TRANSPORT_CONNECT_TIMEOUT=3)(RETRY_COUNT=3)(ADDRESS_LIST=(LOAD_BALANCE=on)(ADDRESS=(PROTOCOL=TCP)(HOST=10.0.0.108)(PORT=1521)))(CONNECT_DATA=(SERVICE_NAME=orcl_primary.sub055160.commonvcn.oraclevcn.com)))
+
+standby_db_alias=(DESCRIPTION=(CONNECT_TIMEOUT=5)(TRANSPORT_CONNECT_TIMEOUT=3)(RETRY_COUNT=3)(ADDRESS_LIST=(LOAD_BALANCE=on)(ADDRESS=(PROTOCOL=TCP)(HOST=10.0.0.16)(PORT=1521)))(CONNECT_DATA=(SERVICE_NAME=orcl_tv8_lhr.sub0955160.commonvcn.oraclevcn.com)))
+
+-- on primary and standby dbs --
+-- primary db
+ssh -i private opc@<primary db>
+-- standby db
+ssh -i private opc@<standby db>
+
+run this in both the databases (first on primary then on standby)
+sudo su - oracle
+cd /u01/app/oracle/product/19.0.0.0/dbhome_1/bin/
+./dgmgrl 
+connect sys/<db_sys_password>
+show configuration verbose
+enable fast_start failover
+
+
+--- ssh into the 3rd site
+./dgmgrl 
+connect sys/<db_sys_password>@primary_db_alias as sysdba
+start observer
+
+set masterobserver to <observer_host_name>
