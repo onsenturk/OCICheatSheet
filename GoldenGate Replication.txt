@@ -1,0 +1,96 @@
+Create deployment again
+Create tables in target db
+Integrated extract - source dep
+Initial load - source dep
+Replicat - target (mapping pdb.schema.* target dbo.*)
+User - target
+Distribution service for initial load - source
+Distribution service for integrated extract - source
+
+------ Create common user in Oracle --
+
+ALTER SYSTEM SET ENABLE_GOLDENGATE_REPLICATION=TRUE SCOPE=BOTH;
+
+DROP USER c##ggadmin CASCADE;
+CREATE USER c##ggadmin IDENTIFIED BY SuperStrongPassword CONTAINER=all;
+ALTER USER c##ggadmin SET CONTAINER_DATA=all CONTAINER=current;
+GRANT CREATE SESSION to c##ggadmin;
+GRANT CREATE VIEW to c##ggadmin;
+GRANT CONNECT to c##ggadmin CONTAINER=all;
+GRANT RESOURCE to c##ggadmin;
+GRANT ALTER SYSTEM to c##ggadmin ;
+GRANT SELECT ANY DICTIONARY to c##ggadmin ;
+exec dbms_goldengate_auth.grant_admin_privilege('C##GGADMIN', container=>'all');
+exec dbms_goldengate_auth.grant_admin_privilege('C##GGADMIN');
+grant unlimited tablespace to c##ggadmin;
+
+SELECT * FROM DBA_SYS_PRIVS WHERE GRANTEE='c##ggadmin' ORDER BY 2;
+
+grant dba to c##ggadmin;
+
+Make sure you can connect to both the cdb and pdb with the c##ggadmin user
+
+
+## might be required ##
+alter session set container=CDB$ROOT;
+ALTER DATABASE ADD SUPPLEMENTAL LOG DATA;
+
+alter session set container=pdb1;
+alter pluggable database add supplemental log data;
+
+
+--- Latest SCN Number ---
+Select current_scn, 'CURRENT', CURRENT_DATE,
+       NULL, NULL, NULL, 'SYS', NULL, NULL, NULL
+ from v$database Order by 1;
+
+
+ --- Oracle deployment
+Integrated Extract
+
+EXTRACT int
+USERIDALIAS BaseDB_cdb DOMAIN OracleGoldenGate
+EXTTRAIL I1
+SOURCECATALOG PDB
+TABLE PDB1.*;
+
+Trail name I1
+
+Initial Load
+EXTRACT iload
+USERIDALIAS BaseDB_cdb DOMAIN OracleGoldenGate
+ExtFile iw Megabytes 2000 Purge
+TABLE PDB1.CO.*, SQLPREDICATE "AS OF SCN 73299075";
+or
+TABLE PDB1.CO.*;
+
+Filename is IW which is used with the distribution list
+
+
+--- sql server deployment
+Initial Load - Classic Apply
+REPLICAT InitC
+USERIDALIAS Sql_Server, DOMAIN OracleGoldenGate
+MAP PDB1.CO.*, TARGET dbo.*;
+
+File Name: IW (same as the source extract file name)
+
+
+CDC - Classic Apply
+REPLICAT CDC
+USERIDALIAS Sql_Server, DOMAIN OracleGoldenGate
+MAP PDB1.CO.*, TARGET dbo.*;
+
+Trail name: same as the source Trail name (I1)
+
+
+---
+
+TABLE PDB1.CO.customers, TARGET dbo.customers;
+TABLE PDB1.CO.PRODUCTS, TARGET dbo.PRODUCTS;
+TABLE PDB1.CO.STORES, TARGET dbo.STORES;
+TABLE PDB1.CO.inventory, TARGET dbo.inventory;
+TABLE PDB1.CO.order_items, TARGET dbo.order_items;
+TABLE PDB1.CO.shipments, TARGET dbo.shipments;
+
+
